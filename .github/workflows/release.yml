@@ -21,8 +21,8 @@ jobs:
             - name: Pack nugets
               run: dotnet pack -c Release --no-build --output .
 
-            # - name: Push to NuGet
-            #   run: dotnet nuget push "*.nupkg" --api-key ${{secrets.nuget_api_key}} --source https://api.nuget.org/v3/index.json
+            - name: Push to NuGet
+              run: dotnet nuget push "*.nupkg" --api-key ${{secrets.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json
 
             - name: Push to Github NuGet registry
               run: dotnet nuget push "*.nupkg" --api-key ${{secrets.GITHUB_TOKEN}} --source https://nuget.pkg.github.com/HypeRate/index.json
