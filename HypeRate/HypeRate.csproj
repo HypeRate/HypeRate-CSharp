@@ -9,6 +9,17 @@
         <LangVersion>10</LangVersion>
         <Version>1.0.1</Version>
         <PackageProjectUrl>https://hyperate.io</PackageProjectUrl>
+        <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     </PropertyGroup>
+
+    <ItemGroup>
+      <Compile Include="**\*.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Remove="obj\**" />
+      <EmbeddedResource Remove="obj\**" />
+      <None Remove="obj\**" />
+    </ItemGroup>
 
 </Project>
