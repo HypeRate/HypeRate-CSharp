@@ -1,59 +1,100 @@
 ﻿using System;
 using System.Threading;
+using System.Threading.Tasks;
 using HypeRate;
 using HypeRate.EventArgs;
 
-class Program
+namespace HypeRateSample
 {
-    private static int _lastHeartbeat = 0;
-    private static readonly object _lock = new();
-
-    static void Main(string[] args)
+    internal static class Program
     {
-        Console.WriteLine("Bitte gib deinen HypeRate Device ID ein:");
-        string deviceId = Console.ReadLine();
-        if (string.IsNullOrWhiteSpace(deviceId))
+        private static int _lastHeartbeat = 0;
+        private static readonly object _lock = new();
+        private static bool _running = true;
+
+        public static async Task Main(string[] _)
         {
-            Console.WriteLine("Device ID ist erforderlich!");
-            return;
+            Console.WriteLine("Please enter your HypeRate API Token:");
+            string? apiToken = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(apiToken))
+            {
+                Console.WriteLine("API Token is required!");
+                return;
+            }
+
+            Console.WriteLine("Please enter your HypeRate Device ID:");
+            string? deviceId = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(deviceId))
+            {
+                Console.WriteLine("Device ID is required!");
+                return;
+            }
+
+            var hypeRate = HypeRate.HypeRate.GetInstance();
+            hypeRate.SetApiToken(apiToken);
+            hypeRate.HeartbeatReceived += OnHeartbeatReceived;
+            hypeRate.Start();
+            await hypeRate.Connect();
+            await hypeRate.JoinHeartbeatChannel(deviceId, null);
+
+            Console.Clear();
+            Console.WriteLine("Heart rate monitor running. Press ESC or Ctrl+C to exit.");
+            Console.WriteLine("Current heart rate: --");
+
+            // Thread for key input to exit
+            var inputThread = new Thread(() =>
+            {
+                while (_running)
+                {
+                    if (Console.KeyAvailable)
+                    {
+                        var key = Console.ReadKey(true);
+                        if (key.Key == ConsoleKey.Escape)
+                        {
+                            _running = false;
+                            break;
+                        }
+                    }
+                    Thread.Sleep(100);
+                }
+            })
+            {
+                IsBackground = true
+            };
+            inputThread.Start();
+
+            try
+            {
+                while (_running)
+                {
+                    int heartbeat;
+                    lock (_lock)
+                    {
+                        heartbeat = _lastHeartbeat;
+                    }
+                    try
+                    {
+                        Console.SetCursorPosition(0, 1);
+                        Console.Write($"Current heart rate: {(heartbeat > 0 ? heartbeat.ToString() : "--")}   ");
+                    }
+                    catch { /* Ignore cursor errors */ }
+                    await Task.Delay(500);
+                }
+            }
+            finally
+            {
+                await hypeRate.LeaveHeartbeatChannel(deviceId, null);
+                await hypeRate.Disconnect();
+                Console.WriteLine("\nExited.");
+            }
         }
 
-        Console.WriteLine("Bitte gib deinen HypeRate API Token ein:");
-        string apiToken = Console.ReadLine();
-        if (string.IsNullOrWhiteSpace(apiToken))
+        private static void OnHeartbeatReceived(object? sender, HeartbeatReceivedEventArgs e)
         {
-            Console.WriteLine("API Token ist erforderlich!");
-            return;
-        }
-
-        HypeRate.HypeRate;
-        hypeRate.SetApiToken(apiToken);
-        hypeRate.HeartbeatReceived += OnHeartbeatReceived;
-        hypeRate.Start();
-        hypeRate.Connect();
-        hypeRate.JoinHeartbeatChannel(deviceId);
-
-        Console.Clear();
-        Console.WriteLine("Herzfrequenz Monitor läuft. Drücke Strg+C zum Beenden.");
-
-        while (true)
-        {
-            int heartbeat;
             lock (_lock)
             {
-                heartbeat = _lastHeartbeat;
+                _lastHeartbeat = e.Heartbeat;
             }
-            Console.SetCursorPosition(0, 1);
-            Console.Write($"Aktuelle Herzfrequenz: {heartbeat}   ");
-            Thread.Sleep(500);
-        }
-    }
-
-    private static void OnHeartbeatReceived(object? sender, HeartbeatReceivedEventArgs e)
-    {
-        lock (_lock)
-        {
-            _lastHeartbeat = e.Heartbeat;
         }
     }
 }
