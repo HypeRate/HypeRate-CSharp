@@ -256,7 +256,10 @@ public class HypeRate
     public async Task Connect(CancellationToken cancellationToken = default)
     {
         if (_websocketClient == null || _websocketClient.State != WebSocketState.None)
+        {
+            _websocketClient?.Dispose();
             _websocketClient = new ClientWebSocket();
+        }
 
         var urlToConnectTo = new Uri($"{BaseUrl}?token={ApiToken}");
         await _websocketClient.ConnectAsync(urlToConnectTo, cancellationToken);
