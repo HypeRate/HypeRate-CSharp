@@ -12,10 +12,14 @@
    - ChannelLeft
    - HeartbeatReceived
    - ClipCreated
-5. Call `HypeRate.GetInstance().JoinHeartbeatChannel()` with the user device ID for receiving updates of the users heartbeat
+5. Call `HypeRate.GetInstance().JoinHeartbeatChannel()` with the user device ID for receiving updates of the users heartbeat (e.g.: "internal-testing")
 6. Call `HypeRate.GetInstance().LeaveHeartbeatChannel()` with the user device ID when you not want to receive further updates of the
    users heartbeat
 7. Call `HypeRate.GetInstance().Disonnect()` when you want to close the connection to the server
+
+## Example Project
+
+You can find an example project in the `HypeRateSample` folder. This project demonstrates how to use the library and can be run directly for a quick start.
 
 ## Working with device IDs
 

@@ -8,34 +8,58 @@ namespace HypeRateSample
 {
     internal static class Program
     {
+        private static bool _running = true;
         private static int _lastHeartbeat = 0;
         private static readonly object _lock = new();
-        private static bool _running = true;
 
         public static async Task Main(string[] _)
         {
-            Console.WriteLine("Please enter your HypeRate API Token:");
-            string? apiToken = Console.ReadLine();
-            if (string.IsNullOrWhiteSpace(apiToken))
+            HypeRate.HypeRate.GetInstance().Start();
+            string? apiToken;
+
+            while (true)
             {
-                Console.WriteLine("API Token is required!");
-                return;
+                Console.WriteLine("Please enter your HypeRate API Token:");
+                apiToken = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(apiToken))
+                {
+                    Console.WriteLine("API Token is required!");
+                    continue;
+                }
+                HypeRate.HypeRate.GetInstance().SetApiToken(apiToken);
+                try
+                {
+                    await HypeRate.HypeRate.GetInstance().Connect();
+                    if (HypeRate.HypeRate.GetInstance().IsConnected)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        Console.WriteLine("API Token invalid or connection failed. Please try again.\n");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Connection failed: {ex.Message}\nPlease try again.\n");
+                }
             }
 
-            Console.WriteLine("Please enter your HypeRate Device ID:");
-            string? deviceId = Console.ReadLine();
-            if (string.IsNullOrWhiteSpace(deviceId))
+            string? deviceId;
+            while (true)
             {
-                Console.WriteLine("Device ID is required!");
-                return;
+                Console.WriteLine("Please enter your HypeRate Device ID:");
+                deviceId = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(deviceId))
+                {
+                    Console.WriteLine("Device ID is required!");
+                    continue;
+                }
+                break;
             }
 
-            var hypeRate = HypeRate.HypeRate.GetInstance();
-            hypeRate.SetApiToken(apiToken);
-            hypeRate.HeartbeatReceived += OnHeartbeatReceived;
-            hypeRate.Start();
-            await hypeRate.Connect();
-            await hypeRate.JoinHeartbeatChannel(deviceId, null);
+            HypeRate.HypeRate.GetInstance().HeartbeatReceived += OnHeartbeatReceived;
+            await HypeRate.HypeRate.GetInstance().JoinHeartbeatChannel(deviceId, null);
 
             Console.Clear();
             Console.WriteLine("Heart rate monitor running. Press ESC or Ctrl+C to exit.");
@@ -83,8 +107,8 @@ namespace HypeRateSample
             }
             finally
             {
-                await hypeRate.LeaveHeartbeatChannel(deviceId, null);
-                await hypeRate.Disconnect();
+                await HypeRate.HypeRate.GetInstance().LeaveHeartbeatChannel(deviceId, null);
+                await HypeRate.HypeRate.GetInstance().Disconnect();
                 Console.WriteLine("\nExited.");
             }
         }

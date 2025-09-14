@@ -39,7 +39,7 @@ public class HypeRate
     ///     Normally you wouldn't change this value - otherwise the WebSocket client could not establish a connection.
     ///     Only change this if you are asked to by the HypeRate team.
     /// </summary>
-    public string BaseUrl = "wss://app.hyperate.io/socket/websocket";
+    public string BaseUrl { get; set; } = "wss://app.hyperate.io/socket/websocket";
 
     /// <summary>
     ///     Constructs a new instance of the HypeRate class
@@ -255,6 +255,9 @@ public class HypeRate
     /// <param name="cancellationToken">The cancellation token which is passed to the WebSocket client</param>
     public async Task Connect(CancellationToken cancellationToken = default)
     {
+        if (_websocketClient == null || _websocketClient.State != WebSocketState.None)
+            _websocketClient = new ClientWebSocket();
+
         var urlToConnectTo = new Uri($"{BaseUrl}?token={ApiToken}");
         await _websocketClient.ConnectAsync(urlToConnectTo, cancellationToken);
         _channelManager = new ChannelManager();
@@ -267,8 +270,11 @@ public class HypeRate
     /// <param name="cancellationToken">The cancellation token which is passed to the WebSocket client</param>
     public async Task Disconnect(CancellationToken cancellationToken = default)
     {
-        await _websocketClient.CloseAsync(WebSocketCloseStatus.NormalClosure, null, cancellationToken);
+        if (_websocketClient != null && _websocketClient.State == WebSocketState.Open)
+            await _websocketClient.CloseAsync(WebSocketCloseStatus.NormalClosure, null, cancellationToken);
+
         Disconnected?.Invoke(this, System.EventArgs.Empty);
+        _websocketClient = new ClientWebSocket();
     }
 
     /// <summary>
@@ -378,7 +384,7 @@ public class HypeRate
     /// <param name="topic">The name of the topic which should be joined</param>
     /// <param name="joinRef">The ref (request ID) of the packet</param>
     /// <returns>The JSON representation of the join packet</returns>
-    private string GetJoinPacket(string topic, int joinRef)
+    private static string GetJoinPacket(string topic, int joinRef)
     {
         return JsonSerializer.Serialize(new JoinChannelPacket(topic, joinRef));
     }
@@ -387,7 +393,7 @@ public class HypeRate
     ///     Returns the string representation of the keep-alive packet
     /// </summary>
     /// <returns>The JSON representation of the keep-alive packet</returns>
-    private string GetKeepAlivePacket()
+    private static string GetKeepAlivePacket()
     {
         return JsonSerializer.Serialize(new KeepAlivePacket());
     }
@@ -398,7 +404,7 @@ public class HypeRate
     /// <param name="topic">The name of the topic which should be left</param>
     /// <param name="leaveRef">The ref (request ID) of the packet</param>
     /// <returns>The JSON representation of the leave packet</returns>
-    private string GetLeavePacket(string topic, int leaveRef)
+    private static string GetLeavePacket(string topic, int leaveRef)
     {
         return JsonSerializer.Serialize(new LeaveChannelPacket(topic, leaveRef));
     }
