@@ -1,7 +1,4 @@
-﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
-using HypeRate;
+﻿using HypeRate;
 using HypeRate.EventArgs;
 
 namespace HypeRateSample
@@ -9,8 +6,6 @@ namespace HypeRateSample
     internal static class Program
     {
         private static bool _running = true;
-        private static int _lastHeartbeat = 0;
-        private static readonly object _lock = new();
 
         public static async Task Main(string[] _)
         {
@@ -21,23 +16,26 @@ namespace HypeRateSample
             {
                 Console.WriteLine("Please enter your HypeRate API Token:");
                 apiToken = Console.ReadLine();
-                if (string.IsNullOrWhiteSpace(apiToken))
+                apiToken = apiToken?.Trim();
+
+                if (string.IsNullOrEmpty(apiToken))
                 {
                     Console.WriteLine("API Token is required!");
                     continue;
                 }
+
                 HypeRate.HypeRate.GetInstance().SetApiToken(apiToken);
+
                 try
                 {
                     await HypeRate.HypeRate.GetInstance().Connect();
+
                     if (HypeRate.HypeRate.GetInstance().IsConnected)
                     {
                         break;
                     }
-                    else
-                    {
-                        Console.WriteLine("API Token invalid or connection failed. Please try again.\n");
-                    }
+
+                    Console.WriteLine("API Token invalid or connection failed. Please try again.\n");
                 }
                 catch (Exception ex)
                 {
@@ -46,79 +44,65 @@ namespace HypeRateSample
             }
 
             string? deviceId;
+
             while (true)
             {
                 Console.WriteLine("Please enter your HypeRate Device ID:");
+
                 deviceId = Console.ReadLine();
-                if (string.IsNullOrWhiteSpace(deviceId))
+                deviceId = deviceId?.Trim();
+
+
+                if (string.IsNullOrEmpty(deviceId))
                 {
                     Console.WriteLine("Device ID is required!");
                     continue;
                 }
+
+                if (Device.IsValidDeviceId(deviceId) == false)
+                {
+                    Console.WriteLine("Device ID is not valid. Please read the documentation: https://github.com/HypeRate/DevDocs/blob/main/Device%20ID.md");
+
+                    continue;
+                }
+
                 break;
             }
 
+            // Register the callback which getse called when a new heartbeat was received
             HypeRate.HypeRate.GetInstance().HeartbeatReceived += OnHeartbeatReceived;
+
+            // Join the channel so we get updates for the provided ID
             await HypeRate.HypeRate.GetInstance().JoinHeartbeatChannel(deviceId, null);
 
             Console.Clear();
             Console.WriteLine("Heart rate monitor running. Press ESC or Ctrl+C to exit.");
-            Console.WriteLine("Current heart rate: --");
 
-            // Thread for key input to exit
-            var inputThread = new Thread(() =>
+            while (_running)
             {
-                while (_running)
-                {
-                    if (Console.KeyAvailable)
-                    {
-                        var key = Console.ReadKey(true);
-                        if (key.Key == ConsoleKey.Escape)
-                        {
-                            _running = false;
-                            break;
-                        }
-                    }
-                    Thread.Sleep(100);
-                }
-            })
-            {
-                IsBackground = true
-            };
-            inputThread.Start();
+                var key = Console.ReadKey(true);
 
-            try
-            {
-                while (_running)
+                if (key.Key != ConsoleKey.Escape)
                 {
-                    int heartbeat;
-                    lock (_lock)
-                    {
-                        heartbeat = _lastHeartbeat;
-                    }
-                    try
-                    {
-                        Console.SetCursorPosition(0, 1);
-                        Console.Write($"Current heart rate: {(heartbeat > 0 ? heartbeat.ToString() : "--")}   ");
-                    }
-                    catch { /* Ignore cursor errors */ }
-                    await Task.Delay(500);
+                    continue;
                 }
+
+                break;
             }
-            finally
-            {
-                await HypeRate.HypeRate.GetInstance().LeaveHeartbeatChannel(deviceId, null);
-                await HypeRate.HypeRate.GetInstance().Disconnect();
-                Console.WriteLine("\nExited.");
-            }
+
+            // Leave the heartbeat channel so we don't get any further updates for the specified device ID
+            await HypeRate.HypeRate.GetInstance().LeaveHeartbeatChannel(deviceId, null);
+
+            // Disconnect from the HypeRate server
+            await HypeRate.HypeRate.GetInstance().Disconnect();
+            Console.WriteLine("Exited");
         }
 
         private static void OnHeartbeatReceived(object? sender, HeartbeatReceivedEventArgs e)
         {
-            lock (_lock)
-            {
-                _lastHeartbeat = e.Heartbeat;
-            }
+            // Print the current heart rate
+            // This can also be 0 if the device is not (properly) positioned against the user
+            Console.WriteLine($"Current heart rate: {e.Heartbeat}");
         }
     }
 }
