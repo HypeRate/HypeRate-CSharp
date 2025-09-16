@@ -120,6 +120,11 @@ public class ChannelManager
             ).ToList();
     }
 
+    /// <summary>
+    /// Handles the join event for the given ref (reference)
+    /// </summary>
+    /// <param name="ref">The generated reference of the request</param>
+    /// <returns>Returns the name of the channel with the matching ref. Otherwise null is returned.</returns>
     public string? HandleJoin(int @ref)
     {
         if (!_joiningChannels.ContainsKey(@ref)) return null;
@@ -133,6 +138,11 @@ public class ChannelManager
         return channelName;
     }
 
+    /// <summary>
+    /// Handles the leave event for the given ref (reference)
+    /// </summary>
+    /// <param name="ref">The generated reference of the request</param>
+    /// <returns></returns>
     public string? HandleLeave(int @ref)
     {
         if (!_leavingChannels.ContainsKey(@ref)) return null;
